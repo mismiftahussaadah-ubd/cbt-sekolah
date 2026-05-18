@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>CBT PANEL ADMIN & ADMINISTRASI</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background: #f0f2f5; }
+        .sidebar { width: 240px; background: #2c3e50; position: fixed; height: 100%; color: white; padding-top: 20px; }
+        .sidebar h2 { text-align: center; font-size: 18px; margin-bottom: 30px; }
+        .sidebar a { display: block; color: #bdc3c7; padding: 15px 20px; text-decoration: none; cursor: pointer; }
+        .sidebar a:hover, .sidebar a.active { background: #34495e; color: white; }
+        .main-content { margin-left: 240px; padding: 30px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        table, th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #f8f9fa; }
+        .btn { background: #27ae60; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-print { background: #2980b9; }
+        @media print {
+            body * { visibility: hidden; }
+            #area-cetak, #area-cetak * { visibility: visible; }
+            #area-cetak { position: absolute; left: 0; top: 0; width: 100%; }
+            .sidebar, .btn, .no-print { display: none !important; }
+        }
+        .lembar-cetak { background: white; padding: 40px; border: 1px solid #000; margin-top: 20px; color: black; }
+        .kop-surat { text-align: center; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 20px; }
+        .kartu-box { width: 42%; border: 2px solid #000; padding: 15px; display: inline-block; margin: 2%; vertical-align: top; }
+    </style>
+</head>
+<body>
+<div class="sidebar no-print">
+    <h2>CBT PANEL ADMIN</h2>
+    <a onclick="bukaTab('dashboard')" id="menu-dashboard" class="active">📊 Dashboard</a>
+    <a onclick="bukaTab('siswa')">👥 Data Siswa</a>
+    <a onclick="bukaTab('soal')">📝 Bank Soal</a>
+    <a onclick="bukaTab('monitoring')">🖥️ Monitoring</a>
+    <a onclick="bukaTab('nilai')">🏆 Hasil Nilai</a>
+    <a onclick="bukaTab('administrasi')">🖨️ Cetak Administrasi</a>
+</div>
+<div class="main-content">
+    <div id="tab-dashboard" class="tab-konten card">
+        <h3>📊 Ringkasan CBT</h3>
+        <p>Gunakan tombol di bawah ini untuk mengambil pembaruan data dari Google Sheets.</p>
+        <button class="btn" onclick="muatDataDariSheets()">🔄 Sinkronisasi Data</button>
+    </div>
+    <div id="tab-siswa" class="tab-konten card" style="display:none;">
+        <h3>👥 Data Peserta</h3>
+        <table id="tabel-siswa"><tr><th>Username</th><th>Nama</th><th>Kelas</th><th>No Peserta</th></tr></table>
+    </div>
+    <div id="tab-soal" class="tab-konten card" style="display:none;">
+        <h3>📝 Bank Soal</h3>
+        <table id="tabel-soal"><tr><th>ID</th><th>Tipe</th><th>Pertanyaan</th></tr></table>
+    </div>
+    <div id="tab-monitoring" class="tab-konten card" style="display:none;">
+        <h3>🖥️ Monitoring Realtime</h3>
+        <table id="tabel-monitor"><tr><th>Waktu</th><th>Nama</th><th>Kelas</th><th>Status</th></tr></table>
+    </div>
+    <div id="tab-nilai" class="tab-konten card" style="display:none;">
+        <h3>🏆 Nilai Peserta</h3>
+        <table id="tabel-nilai"><tr><th>Nama</th><th>Kelas</th><th>Status</th></tr></table>
+    </div>
+    <div id="tab-administrasi" class="tab-konten card" style="display:none;">
+        <h3>🖨️ Dokumen Ujian</h3>
+        <button class="btn btn-print" onclick="cetakDokumen('kartu')">🪪 Cetak Kartu Ujian</button>
+        <button class="btn btn-print" onclick="cetakDokumen('absen')">📝 Cetak Daftar Hadir</button>
+        <button class="btn btn-print" onclick="cetakDokumen('berita')">📄 Cetak Berita Acara</button>
+        <div id="area-cetak"></div>
+    </div>
+</div>
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbynqQuwOJZPvx2YhRJVK1ipSDvUMqJXWj6Eqb0ml2nEBMSM9KMQ-Vn6sg4yJKjrhM9m/exec"; 
+    let dataMaster = { siswa: [], jawaban: [], soal: [] };
+    function bukaTab(namaTab) {
+        document.querySelectorAll('.tab-konten').forEach(el => el.style.display = 'none');
+        document.getElementById('tab-' + namaTab).style.display = 'block';
+    }
+    function muatDataDariSheets() {
+        fetch(API_URL + "?action=getAdminData")
+            .then(res => res.json())
+            .then(data => {
+                dataMaster = data;
+                renderTabel();
+                alert("Sinkronisasi Sukses!");
+            }).catch(err => alert("Gagal mengambil data"));
+    }
+    function renderTabel() {
+        let tSiswa = `<tr><th>Username</th><th>Nama</th><th>Kelas</th><th>No Peserta</th></tr>`;
+        dataMaster.siswa.forEach((row, i) => { if(i>0) tSiswa += `<tr><td>${row[0]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td></tr>` });
+        document.getElementById('tabel-siswa').innerHTML = tSiswa;
+        let tSoal = `<tr><th>ID</th><th>Tipe</th><th>Pertanyaan</th></tr>`;
+        dataMaster.soal.forEach((row, i) => { if(i>0) tSoal += `<tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td></tr>` });
+        document.getElementById('tabel-soal').innerHTML = tSoal;
+        let tMonitor = `<tr><th>Waktu</th><th>Nama</th><th>Kelas</th><th>Status</th></tr>`;
+        dataMaster.jawaban.forEach((row, i) => { if(i>0) tMonitor += `<tr><td>${row[0]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[6]}</td></tr>` });
+        document.getElementById('tabel-monitor').innerHTML = tMonitor;
+        document.getElementById('tabel-nilai').innerHTML = tMonitor;
+    }
+    function cetakDokumen(jenis) {
+        let htmlCetak = "";
+        let tgl = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+        if (jenis === 'kartu') {
+            htmlCetak += `<div class="lembar-cetak">`;
+            dataMaster.siswa.forEach((row, i) => {
+                if(i > 0) htmlCetak += `<div class="kartu-box"><center><b>KARTU UJIAN CBT</b></center><br>No: ${row[4]}<br>Nama: ${row[2]}<br>Kelas: ${row[3]}<br>User: ${row[0]} / Pass: ${row[1]}</div>`;
+            });
+            htmlCetak += `</div>`;
+        } else if (jenis === 'absen') {
+            htmlCetak += `<div class="lembar-cetak"><div class="kop-surat"><h2>DAFTAR HADIR CBT</h2></div><table><tr><th>No</th><th>No Peserta</th><th>Nama</th><th>Tanda Tangan</th></tr>`;
+            dataMaster.siswa.forEach((row, i) => { if(i > 0) htmlCetak += `<tr><td>${i}</td><td>${row[4]}</td><td>${row[2]}</td><td>${i}. ............</td></tr>`; });
+            htmlCetak += `</table></div>`;
+        } else if (jenis === 'berita') {
+            htmlCetak += `<div class="lembar-cetak"><div class="kop-surat"><h2>BERITA ACARA UJIAN CBT</h2></div><p>Pada hari ini tanggal ${tgl} telah dilaksanakan ujian online.</p><p>Jumlah peserta terdaftar: ${dataMaster.siswa.length - 1} orang.</p><br><br><div style="float:right; text-align:center;">Pengawas,<br><br><br>(....................)</div><div style="clear:both;"></div></div>`;
+        }
+        document.getElementById('area-cetak').innerHTML = htmlCetak;
+        setTimeout(() => { window.print(); }, 500);
+    }
+</script>
+</body>
+</html>
