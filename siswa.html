@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ujian CBT Online - Ruang Siswa</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background: #eef2f7; color: #333; }
+        .navbar { background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .container { max-width: 800px; margin: 30px auto; padding: 0 15px; }
+        .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn { background: #3498db; color: white; padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; }
+        .btn:hover { background: #2980b9; }
+        .timer { font-size: 20px; font-weight: bold; color: #e74c3c; background: #fdf2f2; padding: 5px 15px; border-radius: 4px; border: 1px solid #f9acd0; }
+        .soal-box { margin-bottom: 20px; }
+        .opsi-container { margin-top: 15px; }
+        .opsi-item { background: #f8f9fa; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; }
+        .opsi-item input { margin-right: 15px; transform: scale(1.2); }
+        .nav-soal { display: flex; justify-content: space-between; margin-top: 25px; }
+        .btn-nav { background: #7f8c8d; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-selesai { background: #27ae60; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table, th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+        th { background: #f2f2f2; }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <div style="font-weight: bold; font-size: 18px;">💻 CBT-Asesmen v2.0</div>
+    <div id="timer-box" class="timer" style="display: none;">Sisa Waktu: <span id="waktu">00:00</span></div>
+</div>
+
+<div class="container">
+    <!-- PANEL LOGIN -->
+    <div id="panel-login" class="card">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <img id="logo-instansi" src="" alt="Logo Instansi" style="max-height: 100px; width: auto; display: none;">
+        </div>
+        <h2 style="text-align: center; margin-top: 0;">Login Peserta Ujian</h2>
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="username" placeholder="Masukkan Username">
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="Masukkan Password">
+        </div>
+        <button class="btn" onclick="prosesLogin()">Masuk & Mulai Ujian</button>
+    </div>
+
+    <!-- PANEL AREA UJIAN -->
+    <div id="panel-ujian" class="card" style="display: none;">
+        <div style="margin-bottom:15px; font-size:14px; color:#555; border-bottom:1px dashed #ccc; padding-bottom:10px;">
+            <strong>Nama:</strong> <span id="info-nama">-</span> | <strong>Kelas:</strong> <span id="info-kelas">-</span>
+        </div>
+        <div class="soal-box">
+            <h3 id="nomor-soal">Soal No. 1</h3>
+            <p id="teks-soal" style="font-size: 18px;">Memuat soal...</p>
+        </div>
+        <div class="opsi-container"></div>
+        <div class="nav-soal">
+            <button class="btn-nav" id="btn-kembali" onclick="soalSebelumnya()">⬅️ Sebelumnya</button>
+            <button class="btn-nav btn-selesai" id="btn-selesai" onclick="konfirmasiSelesai()" style="display: none;">🔒 Selesai Ujian</button>
+            <button class="btn-nav" id="btn-lanjut" onclick="soalBerikutnya()">Berikutnya ➡️</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // HARDCODE VALUE SINKRONISASI
+    const API_URL = "https://script.google.com/macros/s/AKfycbynqQuwOJZPvx2YhRJVK1ipSDvUMqJXWj6Eqb0ml2nEBMSM9KMQ-Vn6sg4yJKjrhM9m/exec"; 
+    const DRIVE_LOGO_ID = "1hC3ZKzkNthLFiRTmzXcKY3uwk1I_m8vr"; 
+    const DURASI_MENIT = 60; 
+
+    let dataSiswa = {}, daftarSoal = [], lembarJawabanSiswa = [], indeksSoal = 0, hitungMundur;
+
+    window.onload = function() {
+        if (DRIVE_LOGO_ID) {
+            const img = document.getElementById('logo-instansi');
+            img.src = `https://google.com{DRIVE_LOGO_ID}`;
+            img.style.display = "inline-block";
+        }
+    };
+
+    function prosesLogin() {
+        const user = document.getElementById('username').value;
+        const pass = document.getElementById('password').value;
+        if (!user || !pass) return alert("Isi semua kolom!");
+
+        fetch(`${API_URL}?action=login&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`)
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === "success") {
+                    dataSiswa = { username: user, nama: res.nama, kelas: res.kelas, nomor: res.nomor };
+                    document.getElementById('info-nama').innerText = res.nama;
+                    document.getElementById('info-kelas').innerText = res.kelas;
+                    ambilBankSoal();
+                } else { alert(res.message); }
+            });
+    }
+
+    function ambilBankSoal() {
+        fetch(`${API_URL}?action=getSoal`)
+            .then(res => res.json())
+            .then(soal => {
+                daftarSoal = soal;
+                lembarJawabanSiswa = daftarSoal.map(s => ({ id: s.id, jawaban: "" }));
+                document.getElementById('panel-login').style.display = 'none';
+                document.getElementById('panel-ujian').style.display = 'block';
+                document.getElementById('timer-box').style.display = 'block';
+                mulaiTimer(DURASI_MENIT * 60);
+                tampilkanSoal();
+            });
+    }
+
+    function tampilkanSoal() {
+        let s = daftarSoal[indeksSoal];
+        document.getElementById('nomor-soal').innerText = `Soal No. ${indeksSoal + 1} dari ${daftarSoal.length} [${s.jenis}]`;
+        document.getElementById('teks-soal').innerText = s.pertanyaan;
+        
+        let areaOpsi = document.querySelector('.opsi-container');
+        areaOpsi.innerHTML = "";
+        let jawabanTersimpan = lembarJawabanSiswa[indeksSoal].jawaban;
+
+        if (s.jenis === "PG" || s.jenis === "BS") {
+            let list = s.jenis === "PG" ? ['a','b','c','d'] : ['a','b'];
+            list.forEach(opt => {
+                let chk = (jawabanTersimpan === opt) ? "checked" : "";
+                areaOpsi.innerHTML += `<label class="opsi-item"><input type="radio" name="pilihan" value="${opt}" ${chk}> <span>${s[opt]}</span></label>`;
+            });
+        }
+        else if (s.jenis === "PGK") {
+            let arr = jawabanTersimpan ? jawabanTersimpan.split(",") : [];
+            ['a','b','c','d'].forEach(opt => {
+                let chk = arr.includes(opt) ? "checked" : "";
+                areaOpsi.innerHTML += `<label class="opsi-item"><input type="checkbox" name="kompleks" value="${opt}" ${chk}> <span>${s[opt]}</span></label>`;
+            });
+        }
+        else if (s.jenis === "PGK_KAT") {
+            let arr = jawabanTersimpan ? jawabanTersimpan.split(",") : ["","","",""];
+            let html = "<table><tr><th>Pernyataan</th><th>Benar</th><th>Salah</th></tr>";
+            let idx = 0;
+            ['a','b','c'].forEach(opt => {
+                if(!s[opt]) return;
+                html += `<tr><td>${s[opt]}</td>
+                <td><input type="radio" name="kat_${idx}" value="Benar" ${arr[idx]==='Benar'?'checked':''}></td>
+                <td><input type="radio" name="kat_${idx}" value="Salah" ${arr[idx]==='Salah'?'checked':''}></td></tr>`;
+                idx++;
+            });
+            areaOpsi.innerHTML = html + "</table>";
+        }
+        else if (s.jenis === "JODOH") {
+            let arr = jawabanTersimpan ? jawabanTersimpan.split(",") : [];
+            let kanan = s.e ? s.e.split(",") : [];
+            let html = "<table><tr><th>Kiri</th><th>Kanan</th></tr>";
+            let idx = 1;
+            ['a','b','c'].forEach(opt => {
+                if(!s[opt]) return;
+                let match = arr.find(j => j.startsWith(idx + "-"));
+                let selVal = match ? match.split("-")[1] : "";
+                let sel = `<select name="jodoh_${idx}"><option value="">--Pilih--</option>`;
+                kanan.forEach(k => { sel += `<option value="${k.trim()}" ${selVal===k.trim()?'selected':''}>${k.trim()}</option>`; });
+                html += `<tr><td>${idx}. ${s[opt]}</td><td>${sel}</select></td></tr>`;
+                idx++;
+            });
+            areaOpsi.innerHTML = html + "</table>";
+        }
+        else if (s.jenis === "URAIAN") {
+            areaOpsi.innerHTML = `<textarea id="txt-uraian" style="width:100%;height:100px;">${jawabanTersimpan}</textarea>`;
+        }
+
+        document.getElementById('btn-kembali').style.visibility = (indeksSoal === 0) ? 'hidden' : 'visible';
+        if (indeksSoal === daftarSoal.length - 1) {
+            document.getElementById('btn-lanjut').style.display = 'none';
+            document.getElementById('btn-selesai').style.display = 'block';
+        } else {
+            document.getElementById('btn-lanjut').style.display = 'block';
+            document.getElementById('btn-selesai').style.display = 'none';
+        }
+    }
+
+    function simpanJawaban() {
+        let s = daftarSoal[indeksSoal];
+        if (s.jenis === "PG" || s.jenis === "BS") {
+            let p = document.querySelector('input[name="pilihan"]:checked');
+            if (p) lembarJawabanSiswa[indeksSoal].jawaban = p.value;
+        } else if (s.jenis === "PGK") {
+            let chk = document.querySelectorAll('input[name="kompleks"]:checked');
+            lembarJawabanSiswa[indeksSoal].jawaban = Array.from(chk).map(c => c.value).join(",");
+        } else if (s.jenis === "PGK_KAT") {
+            let res = [];
+            for(let i=0; i<3; i++) {
+                let r = document.querySelector(`input[name="kat_${i}"]:checked`);
+                res.push(r ? r.value : "");
+            }
+            lembarJawabanSiswa[indeksSoal].jawaban = res.join(",");
+        } else if (s.jenis === "JODOH") {
+            let res = [];
+            for(let i=1; i<=3; i++) {
+                let v = document.querySelector(`select[name="jodoh_${i}"]`);
+                if(v && v.value) res.push(`${i}-${v.value}`);
+            }
+            lembarJawabanSiswa[indeksSoal].jawaban = res.join(",");
+        } else if (s.jenis === "URAIAN") {
+            let t = document.getElementById('txt-uraian');
+            if (t) lembarJawabanSiswa[indeksSoal].jawaban = t.value;
+        }
+    }
+
+    function soalBerikutnya() { simpanJawaban(); indeksSoal++; tampilkanSoal(); }
+    function soalSebelumnya() { simpanJawaban(); indeksSoal--; tampilkanSoal(); }
+
+    function mulaiTimer(detik) {
+        hitungMundur = setInterval(() => {
+            let m = Math.floor(detik / 60), s = detik % 60;
+            document.getElementById('waktu').innerText = `${m}:${s<10?'0':''}${s}`;
+            if (--detik < 0) { clearInterval(hitungMundur); kirimJawabanAkhir(); }
+        }, 1000);
+    }
+
+    function konfirmasiSelesai() {
+        simpanJawaban();
+        if (confirm("Selesaikan ujian?")) { clearInterval(hitungMundur); kirimJawabanAkhir(); }
+    }
+
+    function kirimJawabanAkhir() {
+        document.getElementById('panel-ujian').innerHTML = "<h2>Mengirim lembar jawaban...</h2>";
+        fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "kirimJawaban", username: dataSiswa.username, nama: dataSiswa.nama, kelas: dataSiswa.kelas, jawabanSiswa: lembarJawabanSiswa })
+        }).then(() => {
+            document.getElementById('panel-ujian').innerHTML = "<h2>✔️ Sukses. Ujian Selesai!</h2>";
+        });
+    }
+</script>
+</body>
+</html>
