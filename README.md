@@ -6,7 +6,7 @@ Sistem Aplikasi Computer Based Test (CBT) gratis berbasis Cloud. Menggunakan **G
 ## 🔗 Link Akses Resmi Aplikasi
 
 *   **📱 Ruang Ujian Siswa:** 
-    [https://github.io](https://github.io)
+    [https://github.io]([https://github.io](https://mismiftahussaadah-ubd.github.io/cbt-sekolah/))
 *   **📊 Panel Kontrol Admin (Guru):** 
     [https://github.io](https://github.io)
 
